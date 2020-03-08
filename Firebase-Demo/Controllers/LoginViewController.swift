@@ -33,13 +33,13 @@ class LoginViewController: UIViewController {
     }
     
     @IBAction func loginButtonPressed(_ sender: UIButton) {
-        guard let email = emailTextField.text,
-            !email.isEmpty,
-            let password = passwordTextField.text,
-            !password.isEmpty else {
-                print("missing fields")
+        guard let email = emailTextField.text,!email.isEmpty, let password = passwordTextField.text, !password.isEmpty else {
+            DispatchQueue.main.async {
+                self.showAlert(title: "Missing Fields", message: "Please enter your email & password")
+            }
                 return
         }
+        
         continueLoginFlow(email: email, password: password)
         
     }
@@ -50,8 +50,7 @@ class LoginViewController: UIViewController {
                 switch result {
                 case .failure(let error):
                     DispatchQueue.main.async {
-                        self?.errorLabel.text = "\(error.localizedDescription)"
-                        self?.errorLabel.textColor = .systemRed
+                        self?.showAlert(title: "Error logging in", message: "\(error.localizedDescription)")
                     }
                 case .success(let data):
                     DispatchQueue.main.async {
@@ -64,8 +63,7 @@ class LoginViewController: UIViewController {
                 switch result {
                 case .failure(let error):
                     DispatchQueue.main.async {
-                        self?.errorLabel.text = "\(error.localizedDescription)"
-                        self?.errorLabel.textColor = .systemRed
+                        self?.showAlert(title: "Error creating account", message: "\(error.localizedDescription)")
                     }
                 case .success(let newUser):
                     DispatchQueue.main.async {

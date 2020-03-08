@@ -8,6 +8,7 @@
 
 import UIKit
 import FirebaseAuth
+import FirebaseFirestore
 
 class CreateItemViewController: UIViewController {
     
@@ -18,17 +19,18 @@ class CreateItemViewController: UIViewController {
     private var category: Category
     
     private let dbService = DatabaseService()
+    private let storageService = StorageService()
     
     private lazy var imagePickerController: UIImagePickerController = {
         let picker = UIImagePickerController()
         picker.delegate = self // conform to UIImagePickerControllerDelegate and UINavigationControllerDelegate
-        
         return picker
     }()
     
     
     private lazy var longPressGesture: UILongPressGestureRecognizer = {
-       let gesture = UILongPressGestureRecognizer()
+        let gesture = UILongPressGestureRecognizer()
+        gesture.addTarget(self, action: #selector(showPhotoOption))
         return gesture
     }()
     
@@ -52,8 +54,6 @@ class CreateItemViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         navigationItem.title = category.name
-        
-        // add long pressed gesture to itemImageView
         itemImageView.isUserInteractionEnabled = true
         itemImageView.addGestureRecognizer(longPressGesture)
     }
@@ -63,14 +63,14 @@ class CreateItemViewController: UIViewController {
         let cameraAction = UIAlertAction(title: "Camera", style: .default) { alertAction in
             self.imagePickerController.sourceType = .camera
             self.present(self.imagePickerController, animated: true)
-        
+            
         }
         let photoLibrary = UIAlertAction(title: "Photo Library", style: .default) { alertAction in
             self.imagePickerController.sourceType = .photoLibrary
             self.present(self.imagePickerController, animated: true)
         }
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
-        if UIImagePickerController.isSourceTypeAvailable(.camera){
+        if UIImagePickerController.isSourceTypeAvailable(.camera) {
             alertController.addAction(cameraAction)
         }
         alertController.addAction(photoLibrary)
@@ -85,7 +85,8 @@ class CreateItemViewController: UIViewController {
             !itemName.isEmpty,
             let priceText = itemPrice.text,
             !priceText.isEmpty,
-            let price = Double(priceText) else {
+            let price = Double(priceText),
+            let selectedImage = selectedImage else {
                 showAlert(title: "Missing Fields", message: "All fields are required")
                 return
         }
@@ -95,20 +96,53 @@ class CreateItemViewController: UIViewController {
             return
         }
         
+        //resize image before uploading to storage
+        let resizedImage = UIImage.resizeImage(originalImage: selectedImage, rect: itemImageView.bounds)
+        
         
         dbService.createItem(itemName: itemName, price: price, category: category, displayName: displayName) { [weak self] (result) in
             switch result {
             case .failure(let error):
-                self?.showAlert(title: "error creatingItem", message: "Sorry, something went wrong \(error.localizedDescription)")
-            case .success:
                 DispatchQueue.main.async {
-                self?.showAlert(title: nil, message: "Successfully listed your item")
+                    self?.showAlert(title: "error creatingItem", message: "Sorry, something went wrong \(error.localizedDescription)")
                 }
+            case .success(let documentId):
+                self?.uploadPhoto(photo: resizedImage, documentId: documentId)
             }
         }
-        
-        dismiss(animated: true)
     }
+    
+    private func uploadPhoto(photo: UIImage, documentId: String) {
+        storageService.uploadPhoto(itemId: documentId, image: photo) { [weak self] (result) in
+            switch result {
+            case .failure(let error):
+                DispatchQueue.main.async {
+                self?.showAlert(title: "Error uploading photo", message: "\(error.localizedDescription)")
+                }
+            case .success(let url):
+                self?.updateItemImageURL(url, documentId: documentId)
+            }
+        }
+    }
+    
+    private func updateItemImageURL(_ url: URL, documentId: String) {
+        Firestore.firestore().collection(DatabaseService.itemsCollection).document(documentId).updateData(["imageURL": url.absoluteString]) { [weak self] (error) in
+            if let error = error {
+                DispatchQueue.main.async {
+                    self?.showAlert(title: "Fail to update item", message: "\(error.localizedDescription)")
+                }
+            } else {
+                DispatchQueue.main.async {
+                    self?.dismiss(animated: true)
+                }
+            }
+                
+        }
+    }
+    
+    
+    
+    
 }
 
 extension CreateItemViewController: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
@@ -118,5 +152,6 @@ extension CreateItemViewController: UIImagePickerControllerDelegate, UINavigatio
                 fatalError("could not attain original image")
         }
         selectedImage = image
+        dismiss(animated: true)
     }
 }

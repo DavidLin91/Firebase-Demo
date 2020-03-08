@@ -99,13 +99,7 @@ class ProfileViewController: UIViewController {
                     }
                 })
             }
-            
-            
         }
-        
-        
-        
-        
     }
     
     
@@ -134,7 +128,7 @@ class ProfileViewController: UIViewController {
     @IBAction func signoutButtonPressed(_ sender: UIButton) {
         do {
             try Auth.auth().signOut()
-            UIViewController.showViewController(storyboardName: "LoginView", viewControllerId: "LoginView")
+            UIViewController.showViewController(storyboardName: "LoginView", viewControllerId: "LoginViewController")
         } catch {
             DispatchQueue.main.async {
                 self.showAlert(title: "Error signing out", message: "\(error)")

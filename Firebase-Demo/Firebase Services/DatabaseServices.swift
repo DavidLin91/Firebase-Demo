@@ -17,7 +17,7 @@ class DatabaseService {
     // let's get a rrference to the Firebase Firestore database
     private let db = Firestore.firestore()
     
-    public func createItem(itemName: String, price: Double, category: Category, displayName: String, completion: @escaping (Result<Bool, Error>) -> ()) {
+    public func createItem(itemName: String, price: Double, category: Category, displayName: String, completion: @escaping (Result<String, Error>) -> ()) {
         
         guard let user = Auth.auth().currentUser else { return }
         
@@ -31,7 +31,7 @@ class DatabaseService {
             if let error = error {
                 completion(.failure(error))
             } else {
-                completion(.success(true))
+                completion(.success(documentRef.documentID))
             }
         }
     }
