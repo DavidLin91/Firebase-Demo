@@ -139,10 +139,7 @@ class CreateItemViewController: UIViewController {
                 
         }
     }
-    
-    
-    
-    
+
 }
 
 extension CreateItemViewController: UIImagePickerControllerDelegate, UINavigationControllerDelegate {

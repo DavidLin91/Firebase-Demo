@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import FirebaseAuth
 
 enum AccountState {
     case existingUser
@@ -27,6 +28,8 @@ class LoginViewController: UIViewController {
     
     private var authSession = AuthenticationSession()
     
+    private var databaseService = DatabaseService()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         clearErrorLabel()
@@ -37,7 +40,7 @@ class LoginViewController: UIViewController {
             DispatchQueue.main.async {
                 self.showAlert(title: "Missing Fields", message: "Please enter your email & password")
             }
-                return
+            return
         }
         
         continueLoginFlow(email: email, password: password)
@@ -52,7 +55,7 @@ class LoginViewController: UIViewController {
                     DispatchQueue.main.async {
                         self?.showAlert(title: "Error logging in", message: "\(error.localizedDescription)")
                     }
-                case .success(let data):
+                case .success:
                     DispatchQueue.main.async {
                         self?.navigateToMainView()
                     }
@@ -65,18 +68,33 @@ class LoginViewController: UIViewController {
                     DispatchQueue.main.async {
                         self?.showAlert(title: "Error creating account", message: "\(error.localizedDescription)")
                     }
-                case .success(let newUser):
-                    DispatchQueue.main.async {
-                        self?.navigateToMainView()
-                    }
+                case .success (let authDataResult):
+                    self?.createDatabaseUser(authDataResult: authDataResult)
                 }
             }
         }
     }
     
+    private func createDatabaseUser(authDataResult: AuthDataResult) {
+        databaseService.createDatabaseUser(authDataResult: authDataResult) { [weak self] (result) in
+            switch result {
+            case .failure(let error):
+                DispatchQueue.main.async {
+                    self?.showAlert(title: "Account error", message: error.localizedDescription)
+                }
+            case .success:
+                DispatchQueue.main.async {
+                    self?.navigateToMainView()
+                }
+            }
+        }
+    }
+    
+    
     private func navigateToMainView() {
         UIViewController.showViewController(storyboardName: "MainView", viewControllerId: "MainTabBarController")
     }
+    
     
     
     private func clearErrorLabel() {

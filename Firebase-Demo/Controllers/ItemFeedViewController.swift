@@ -8,6 +8,7 @@
 
 import UIKit
 import FirebaseFirestore
+import FirebaseAuth
 
 
 class ItemFeedViewController: UIViewController {
@@ -24,6 +25,8 @@ class ItemFeedViewController: UIViewController {
         }
     }
     
+    private let databaseService = DatabaseService()
+    
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -31,7 +34,7 @@ class ItemFeedViewController: UIViewController {
         // register our custom nib/ xib item cell class
         tableView.register(UINib(nibName: "ItemCell", bundle: nil), forCellReuseIdentifier: "itemCell")
         tableView.delegate = self
-
+        
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -70,10 +73,59 @@ extension ItemFeedViewController: UITableViewDataSource {
         return cell
     }
 
+    
+    
+    // swipe to delete
+    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+        if editingStyle == .delete {
+            //perform deletion on item
+            let item = items[indexPath.row]
+            databaseService.delete(item: item) { [weak self ] (result) in
+                switch result {
+                case .failure(let error):
+                    DispatchQueue.main.async {
+                        self?.showAlert(title: "Deletion Error", message: error.localizedDescription)
+                    }
+                case .success:
+                    print("deleted successfully")
+                }
+            }
+        }
+    }
+    
+    
+    // on the client side meaning the app we will ensure that swipe to delete ony works for the user who created the item
+    func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
+        let item = items[indexPath.row]
+        guard let user = Auth.auth().currentUser else { return false }
+        
+        if item.sellerId != user.uid {
+            return false  // cannot swipe on row to delete
+        }
+        return true // able to swipe to delete item
+    }
+    
+    
+    // that's not enough to only prevent accideential deletion on the cleint, we need to protect the dtabase as well, we will do so using Firebase "security rules"
+    
+    
+    
+    
 }
 
 extension ItemFeedViewController: UITableViewDelegate {
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let item = items[indexPath.row]
+        let storyboard = UIStoryboard(name: "MainView", bundle: nil)
+        let detailVC = storyboard.instantiateViewController(identifier: "ItemDetailController") { (coder) in
+            return ItemDetailController(coder: coder, item: item)
+        }
+        navigationController?.pushViewController(detailVC, animated: true) 
+    }
+    
+    
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         return 140
     }
+    
 }

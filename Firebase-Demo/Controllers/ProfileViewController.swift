@@ -19,6 +19,7 @@ class ProfileViewController: UIViewController {
     @IBOutlet weak var userProfileButton: UIButton!
     
     
+    var databaseService = DatabaseService()
     
     private var selectedImage: UIImage? {
         didSet {
@@ -84,6 +85,11 @@ class ProfileViewController: UIViewController {
                     self?.showAlert(title: "Error", message: "\(error.localizedDescription)")
                 }
             case .success(let url):
+                
+                self?.updateDatabaseUser(displayName: displayName, photoURL: url.absoluteString)
+                
+                
+                //TODO: refactor into its own function
                 let request = Auth.auth().currentUser?.createProfileChangeRequest()
                 request?.displayName = displayName
                 request?.photoURL = url
@@ -101,6 +107,19 @@ class ProfileViewController: UIViewController {
             }
         }
     }
+    
+    
+    private func updateDatabaseUser(displayName: String, photoURL: String) {
+        databaseService.updateDatabaseUser(displayName: displayName, photoURL: photoURL) { (result) in
+            switch result {
+            case .failure(let error):
+                print("failed to udpate db user: \(error.localizedDescription)")
+            case .success:
+                print("successfully updated db user ")
+            }
+        }
+    }
+    
     
     
     @IBAction func editProfilePhotoButtonPressed(_ sender: UIButton) {
